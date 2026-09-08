@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus Core — Trading & Mining</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js">
+    </script>
+    <script src="https://telegram.org/js/telegram-web-app.js">
+    </script>
+    
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-card: #111118;
+            --border: #1e1e28;
+            --text: #e0e0e8;
+            --text-secondary: #8888a0;
+            --text-muted: #555568;
+            --green: #00c853;
+            --red: #ff1744;
+            --blue: #448aff;
+            --purple: #7c4dff;
+            --gold: #ffd740;
+            --orange: #ff9800;
+            --nvidia: #76B900;
+            --amd: #ED1C24;
+            --intel: #0071C5;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Inter', sans-serif;
+            --touch-target: 40px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* Auth Screen */
+        #authScreen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 30px 24px;
+            background: radial-gradient(ellipse at center, #0a0a1a, #07070b);
+            overflow-y: auto;
+        }
+        #authScreen .logo { font-size: 60px; margin-bottom: 4px; animation: float 3s ease-in-out infinite; filter: drop-shadow(0 0 40px rgba(0, 200, 83, 0.2)); }
+        @keyframes float { 0%, 100% { transform: translateY(0px) } 50% { transform: translateY(-6px) } }
+        #authScreen h2 { color: var(--green); font-size: 24px; font-weight: 800; margin-bottom: 2px; text-shadow: 0 0 30px rgba(0, 200, 83, 0.15); }
+        #authScreen .subtitle { color: var(--text-secondary); font-size: 11px; margin-bottom: 12px; }
+        #authScreen .auth-tabs { display: flex; gap: 4px; width: 100%; max-width: 300px; margin-bottom: 8px; }
+        #authScreen .auth-tab { flex: 1; padding: 8px; border: 2px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.3s; text-align: center; }
+        #authScreen .auth-tab.active { border-color: var(--green); color: var(--text); background: rgba(0, 200, 83, 0.08); }
+        #authScreen .auth-tab:active { transform: scale(0.95); }
+        #authScreen input { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); padding: 10px 14px; border-radius: 6px; width: 100%; max-width: 300px; margin-bottom: 6px; text-align: center; font-size: 13px; outline: none; transition: border 0.3s; }
+        #authScreen input:focus { border-color: var(--green); }
+        #authScreen input::placeholder { color: #555; }
+        #authScreen .btn { width: 100%; max-width: 300px; padding: 10px; margin-top: 3px; font-size: 13px; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; transition: transform 0.2s; }
+        #authScreen .btn:active { transform: scale(0.97); }
+        #authScreen .btn-g { background: linear-gradient(135deg, var(--green), #00a843); color: #000; box-shadow: 0 0 30px rgba(0, 200, 83, 0.2); }
+        #authScreen .btn-tg { background: linear-gradient(135deg, #229ED9, #1a7ab5); color: #fff; }
+        #authScreen .btn-p { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
+        #authScreen .btn-o { background: #f97316; color: #fff; }
+        #authScreen .divider { color: #555; font-size: 9px; margin: 6px 0 3px; display: flex; align-items: center; gap: 12px; width: 100%; max-width: 300px; }
+        #authScreen .divider::before, #authScreen .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        #authScreen .error { color: #ef4444; font-size: 10px; margin-top: 3px; min-height: 16px; text-align: center; }
+        #authScreen .success { color: var(--green); font-size: 10px; margin-top: 3px; min-height: 16px; text-align: center; }
+
+        /* Game Layout */
+        .header {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 4px 10px;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            min-height: 40px;
+        }
+        .logo { font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+        .logo span { color: var(--blue); }
+        
+        .main-balance {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gold);
+            background: rgba(255, 215, 64, 0.1);
+            padding: 4px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 64, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .main-balance .currency { font-size: 0.7rem; color: var(--text-secondary); font-weight: 400; }
+        
+        .search { flex: 1; max-width: 140px; position: relative; min-width: 70px; }
+        .search input { width: 100%; padding: 4px 4px 4px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.55rem; outline: none; }
+        .search::before { content: '⌕'; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 8px; }
+        .user-info { display: flex; align-items: center; gap: 4px; font-size: 0.5rem; }
+        .user-info .name { color: var(--text); font-weight: 600; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-info .logout-btn { background: var(--red); color: #fff; border: none; padding: 1px 5px; border-radius: 3px; font-size: 0.4rem; cursor: pointer; }
+
+        .stats {
+            display: flex; gap: 6px; padding: 2px 10px; border-bottom: 1px solid var(--border);
+            flex-wrap: wrap; overflow-x: auto; background: rgba(10, 10, 15, 0.8); min-height: 30px;
+        }
+        .stat { display: flex; flex-direction: column; gap: 0px; white-space: nowrap; flex-shrink: 0; }
+        .stat-label { font-size: 0.35rem; color: var(--text-secondary); text-transform: uppercase; }
+        .stat-value { font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600; }
+        .positive { color: var(--green); } .negative { color: var(--red); }
+
+        .game-selector {
+            display: flex; gap: 3px; padding: 3px 10px;
+            background: rgba(18, 18, 26, 0.95); border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .game-selector .game-btn {
+            flex: 1; padding: 4px 6px; border: 2px solid var(--border); border-radius: 6px;
+            background: var(--bg-card); color: var(--text-secondary); font-size: 0.5rem; font-weight: 700;
+            cursor: pointer; text-align: center; transition: all 0.3s;
+        }
+        .game-selector .game-btn .icon { font-size: 14px; display: block; }
+        .game-selector .game-btn.game1.active { border-color: var(--green); color: var(--green); background: rgba(0, 200, 83, 0.08); }
+        .game-selector .game-btn.game2.active { border-color: var(--red); color: var(--red); background: rgba(255, 23, 68, 0.08); }
+
+        .main {
+            display: flex; flex: 1; min-height: 0; gap: 0;
+        }
+
+        .left-panel {
+            display: flex; flex-direction: column; flex: 1; min-width: 0;
+            gap: 3px; padding: 3px 5px; border-right: 1px solid var(--border); overflow: hidden;
+        }
+        .chart-tabs { display: flex; gap: 2px; flex-wrap: wrap; flex-shrink: 0; }
+        .chart-tab {
+            padding: 3px 6px; background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 3px; color: var(--text-secondary); cursor: pointer;
+            font-size: 0.45rem; font-family: var(--font-mono); min-height: 22px;
+        }
+        .chart-tab.active { border-color: var(--blue); color: var(--text); background: rgba(68,138,255,0.1); }
+        .chart-container { flex-shrink: 0; height: 120px; position: relative; }
+
+        .panel-tabs { display: flex; gap: 2px; flex-shrink: 0; }
+        .panel-tab {
+            padding: 3px 6px; background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 3px; color: var(--text-secondary); cursor: pointer;
+            font-size: 0.5rem; font-weight: 600; min-height: 22px;
+        }
+        .panel-tab.active { border-color: var(--blue); color: var(--text); background: rgba(68,138,255,0.1); }
+
+        .asset-list {
+            flex: 1; overflow-y: auto; min-height: 0;
+            display: flex; flex-direction: column; gap: 1px; padding: 2px 0;
+        }
+        .asset-item {
+            display: flex; align-items: center; gap: 3px; padding: 3px 4px;
+            cursor: pointer; border-radius: 3px; font-size: 0.5rem; min-height: 22px; flex-shrink: 0;
+        }
+        .asset-item:active { background: var(--bg-card); }
+        .asset-symbol { font-family: var(--font-mono); font-weight: 600; min-width: 26px; }
+        .asset-name { flex: 1; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .asset-price { font-family: var(--font-mono); text-align: right; min-width: 44px; }
+        .asset-change { font-family: var(--font-mono); font-size: 0.45rem; min-width: 34px; text-align: right; }
+
+        .trade-panel {
+            display: flex; flex-direction: column; width: 320px; min-width: 260px; max-width: 380px;
+            gap: 3px; padding: 3px 5px; overflow: hidden; flex-shrink: 0;
+        }
+        .panel-content { display: none; flex-direction: column; gap: 3px; flex: 1; min-height: 0; }
+        .panel-content.active { display: flex; }
+
+        .asset-info {
+            text-align: center; padding: 3px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; flex-shrink: 0;
+        }
+        .asset-info-name { font-weight: 600; font-size: 0.6rem; }
+        .asset-info-price { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; }
+
+        .buy-menu {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+            padding: 3px; flex-shrink: 0;
+        }
+        .buy-menu-title { font-size: 0.45rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px; }
+        .quick-buy-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-bottom: 2px; }
+        .quick-btn {
+            padding: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+            color: var(--text); cursor: pointer; font-size: 0.5rem; font-family: var(--font-mono); min-height: 24px;
+        }
+        .quick-btn:active { border-color: var(--green); }
+        .custom-buy { display: flex; gap: 2px; }
+        .custom-buy input {
+            flex: 1; padding: 3px 5px; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 3px; color: var(--text); font-family: var(--font-mono);
+            font-size: 0.5rem; outline: none; min-height: 24px;
+        }
+        .btn-group { display: flex; gap: 2px; margin-top: 2px; }
+        .btn {
+            flex: 1; padding: 4px; border: none; border-radius: 3px;
+            font-weight: 600; font-size: 0.5rem; cursor: pointer; min-height: 24px;
+        }
+        .btn-buy { background: var(--green); color: #000; }
+        .btn-sell { background: var(--red); color: #fff; }
+        .btn-buy-company {
+            width: 100%; padding: 4px; border: none; border-radius: 3px;
+            font-weight: 600; font-size: 0.5rem; cursor: pointer;
+            background: var(--gold); color: #000; margin-top: 2px; min-height: 24px;
+        }
+        .btn-buy-company:disabled { opacity: 0.4; }
+
+        /* Mining Panel */
+        .mining-panel {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+            padding: 3px 4px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .mining-title { font-size: 0.55rem; font-weight: 700; text-align: center; flex-shrink: 0; padding-bottom: 2px; }
+        
+        .mining-row {
+            display: flex; gap: 3px; flex: 1; min-height: 0;
+        }
+        .mining-col { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        
+        .mining-coin-selector {
+            display: flex; gap: 2px; flex-wrap: wrap; max-height: 36px; overflow-y: auto; flex-shrink: 0;
+        }
+        .mining-coin-btn {
+            padding: 1px 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px;
+            color: var(--text-secondary); cursor: pointer; font-size: 0.4rem; font-family: var(--font-mono); min-height: 18px;
+        }
+        .mining-coin-btn.active { border-color: var(--purple); color: var(--text); background: rgba(124,77,255,0.15); }
+
+        .pc-config {
+            display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-y: auto;
+        }
+        .pc-config-row {
+            display: flex; align-items: center; gap: 3px; padding: 2px 4px;
+            background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+            font-size: 0.42rem; min-height: 20px; flex-shrink: 0;
+        }
+        .pc-config-label { min-width: 24px; font-weight: 600; color: var(--text-secondary); font-size: 0.42rem; }
+        .pc-config-items { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
+        .pc-config-item {
+            padding: 1px 4px; background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 2px; cursor: pointer; font-size: 0.38rem; font-family: var(--font-mono);
+        }
+        .pc-config-item.active { border-color: var(--green); color: var(--green); }
+        .pc-config-item.missing { border-color: var(--red); color: var(--red); opacity: 0.5; }
+
+        .hw-section { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; }
+        .hw-category-tabs { display: flex; gap: 2px; flex-shrink: 0; flex-wrap: wrap; }
+        .hw-cat-tab {
+            padding: 2px 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px;
+            color: var(--text-secondary); cursor: pointer; font-size: 0.4rem; min-height: 18px;
+        }
+        .hw-cat-tab.active { border-color: var(--blue); color: var(--text); }
+
+        .hardware-list {
+            display: flex; flex-direction: column; gap: 1px; flex: 1; overflow-y: auto; min-height: 0; max-height: 60px;
+        }
+        .hw-item {
+            display: flex; align-items: center; gap: 2px; padding: 1px 3px;
+            background: var(--bg); border: 1px solid var(--border); border-radius: 2px;
+            font-size: 0.38rem; flex-shrink: 0; min-height: 16px;
+        }
+        .hw-item-name { flex: 1; font-weight: 600; font-size: 0.38rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hw-item-spec { color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.32rem; white-space: nowrap; }
+        .hw-item-price { color: var(--gold); font-family: var(--font-mono); font-size: 0.38rem; white-space: nowrap; }
+        .hw-buy-btn {
+            padding: 1px 4px; background: var(--green); border: none; border-radius: 2px;
+            color: #000; cursor: pointer; font-size: 0.35rem; font-weight: 600; min-height: 14px; flex-shrink: 0;
+        }
+        .hw-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .hw-qty { font-family: var(--font-mono); font-size: 0.38rem; min-width: 10px; text-align: center; }
+        .hw-brand { font-size: 0.3rem; padding: 0px 3px; border-radius: 2px; }
+        .hw-brand.nvidia { color: var(--nvidia); }
+        .hw-brand.amd { color: var(--amd); }
+        .hw-brand.intel { color: var(--intel); }
+        .hw-qty-input { width: 30px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 2px; font-size: 0.35rem; text-align: center; font-family: var(--font-mono); }
+
+        .select-row {
+            display: flex; gap: 3px; align-items: center; flex-wrap: wrap; padding: 2px 0;
+        }
+        .select-row select {
+            flex: 1; min-width: 60px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+            border-radius: 3px; padding: 2px 4px; font-size: 0.38rem; font-family: var(--font-mono); outline: none;
+        }
+        .select-row .btn-set {
+            padding: 1px 6px; background: var(--green); border: none; border-radius: 2px;
+            color: #000; cursor: pointer; font-size: 0.35rem; font-weight: 600; min-height: 14px;
+        }
+        .select-row .btn-set:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .mining-bottom {
+            flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; margin-top: 2px;
+        }
+        .energy-cost {
+            padding: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+            font-size: 0.4rem; font-family: var(--font-mono); text-align: center;
+        }
+        .btn-mine {
+            width: 100%; padding: 4px; border: none; border-radius: 3px;
+            font-weight: 600; font-size: 0.5rem; cursor: pointer;
+            background: var(--purple); color: #fff; min-height: 24px;
+        }
+        .btn-mine.active { background: var(--gold); color: #000; }
+        .btn-mine:disabled { opacity: 0.4; cursor: not-allowed; }
+        .mining-stats {
+            display: flex; gap: 2px; flex-wrap: wrap; font-size: 0.38rem; font-family: var(--font-mono);
+        }
+        .mining-stat { padding: 1px 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; }
+
+        .holdings-wrap {
+            display: flex; flex-direction: column; flex-shrink: 0; 
+            max-height: 70px; min-height: 35px; margin-top: 2px;
+        }
+        .holdings-title { font-size: 0.4rem; color: var(--text-secondary); text-transform: uppercase; flex-shrink: 0; }
+        .holdings-list {
+            display: flex; flex-direction: column; gap: 1px; flex: 1; 
+            overflow-y: auto; min-height: 0;
+        }
+        .holding-item {
+            display: flex; align-items: center; gap: 3px; padding: 2px 3px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 2px;
+            font-size: 0.4rem; flex-shrink: 0;
+        }
+        .holding-symbol { font-family: var(--font-mono); font-weight: 600; min-width: 18px; }
+        .holding-amount { flex: 1; font-family: var(--font-mono); color: var(--text-secondary); }
+        .holding-value { font-family: var(--font-mono); font-weight: 600; }
+
+        .toast {
+            position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--bg-card); padding: 4px 14px; border-radius: 20px;
+            font-size: 0.6rem; font-weight: 600; z-index: 999; opacity: 0;
+            transition: opacity 0.4s; pointer-events: none;
+            border: 1px solid var(--green); max-width: 90%; text-align: center;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .header { padding: 3px 6px; min-height: 34px; gap: 4px; }
+            .logo { font-size: 0.7rem; }
+            .main-balance { font-size: 0.9rem; padding: 2px 10px; }
+            .search { max-width: 80px; min-width: 50px; }
+            .search input { font-size: 0.45rem; padding: 2px 3px 2px 16px; }
+            .search::before { font-size: 6px; left: 3px; }
+            .user-info .name { max-width: 40px; font-size: 0.4rem; }
+            .user-info .logout-btn { font-size: 0.35rem; padding: 0px 4px; }
+
+            .stats { padding: 1px 6px; gap: 4px; min-height: 24px; }
+            .stat-label { font-size: 0.3rem; }
+            .stat-value { font-size: 0.5rem; }
+
+            .game-selector { padding: 2px 6px; gap: 2px; }
+            .game-selector .game-btn { font-size: 0.4rem; padding: 3px 4px; }
+            .game-selector .game-btn .icon { font-size: 11px; }
+
+            .main { flex-direction: column; }
+            .left-panel {
+                border-right: none; border-bottom: 1px solid var(--border);
+                padding: 2px 3px; max-height: 35vh;
+            }
+            .chart-container { height: 70px; }
+            .chart-tab { padding: 2px 4px; font-size: 0.4rem; min-height: 18px; }
+            .panel-tab { padding: 2px 4px; font-size: 0.4rem; min-height: 18px; }
+            .asset-item { padding: 2px 3px; font-size: 0.4rem; min-height: 18px; }
+            .asset-symbol { min-width: 20px; }
+            .asset-price { min-width: 34px; }
+            .asset-change { min-width: 28px; }
+
+            .trade-panel {
+                width: 100%; min-width: unset; max-width: unset;
+                padding: 2px 3px; max-height: 65vh;
+            }
+            .asset-info { padding: 2px; }
+            .asset-info-name { font-size: 0.5rem; }
+            .asset-info-price { font-size: 0.7rem; }
+            
+            .buy-menu { padding: 2px; }
+            .quick-btn { padding: 3px; font-size: 0.4rem; min-height: 20px; }
+            .custom-buy input { padding: 2px 4px; font-size: 0.4rem; min-height: 20px; }
+            .btn { padding: 3px; font-size: 0.4rem; min-height: 20px; }
+            .btn-buy-company { padding: 3px; font-size: 0.4rem; min-height: 20px; }
+            
+            .mining-panel { padding: 2px 3px; }
+            .mining-title { font-size: 0.45rem; }
+            .mining-coin-selector { max-height: 28px; }
+            .mining-coin-btn { font-size: 0.35rem; padding: 1px 3px; min-height: 14px; }
+            .pc-config-row { font-size: 0.36rem; min-height: 16px; padding: 1px 3px; }
+            .pc-config-item { font-size: 0.32rem; padding: 0px 3px; }
+            .hw-item { font-size: 0.32rem; padding: 1px 2px; min-height: 14px; }
+            .hw-item-name { font-size: 0.32rem; }
+            .hw-buy-btn { font-size: 0.3rem; padding: 0px 3px; min-height: 12px; }
+            .hw-qty-input { width: 24px; font-size: 0.3rem; }
+            .btn-mine { padding: 3px; font-size: 0.4rem; min-height: 20px; }
+            .energy-cost { font-size: 0.35rem; }
+            .mining-stats { font-size: 0.32rem; }
+            .select-row select { font-size: 0.32rem; padding: 1px 3px; }
+            .select-row .btn-set { font-size: 0.3rem; padding: 0px 4px; }
+
+            .holdings-wrap { max-height: 50px; min-height: 25px; }
+            .holding-item { padding: 1px 2px; font-size: 0.35rem; }
+            .holding-symbol { min-width: 14px; }
+
+            #authScreen { padding: 20px 16px; }
+            #authScreen .logo { font-size: 48px; }
+            #authScreen h2 { font-size: 20px; }
+            #authScreen input { padding: 8px 12px; font-size: 12px; }
+            #authScreen .btn { padding: 8px; font-size: 12px; }
+        }
+
+        @media (max-width: 480px) {
+            .stats { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .stat { flex-shrink: 0; }
+            .chart-container { height: 55px; }
+            .quick-buy-buttons { grid-template-columns: repeat(2, 1fr); }
+            .left-panel { max-height: 30vh; }
+            .trade-panel { max-height: 70vh; }
+            .hardware-list { max-height: 40px; }
+            .mining-coin-selector { max-height: 22px; }
+            .holdings-wrap { max-height: 40px; min-height: 20px; }
+        }
+
+        @media (min-width: 1024px) {
+            .chart-container { height: 150px; }
+            .hardware-list { max-height: 80px; }
+            .mining-coin-selector { max-height: 45px; }
+            .holdings-wrap { max-height: 90px; }
+            .trade-panel { width: 340px; }
+        }
+
+        @media (min-width: 1440px) {
+            .chart-container { height: 180px; }
+            .trade-panel { width: 400px; }
+            .hardware-list { max-height: 100px; }
+            .holdings-wrap { max-height: 110px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTH SCREEN -->
+    <div id="authScreen">
+        <div class="logo">💎</div>
+        <h2>Nexus Core</h2>
+        <p class="subtitle">🎮 Один акаунт — всі ігри!</p>
+        <div class="auth-tabs">
+            <button class="auth-tab active" onclick="switchAuthTab('login')">Вхід</button>
+            <button class="auth-tab" onclick="switchAuthTab('register')">Реєстрація</button>
+        </div>
+        <div id="authStatus" style="color:var(--text-secondary);font-size:10px;margin-bottom:6px;text-align:center;">🔐 Виберіть спосіб входу</div>
+        <div id="authFields">
+            <input type="text" id="authNick" placeholder="👤 Нікнейм">
+            <input type="password" id="authPass" placeholder="🔑 Пароль (мін. 6)">
+        </div>
+        <div class="error" id="authError"></div>
+        <div class="success" id="authSuccess"></div>
+        <button class="btn btn-g" id="authMainBtn" onclick="handleLogin()">🔐 Увійти</button>
+        <div class="divider">або</div>
+        <button class="btn btn-tg" onclick="handleTelegramLogin()">📱 Telegram</button>
+        <div class="divider">або</div>
+        <button class="btn btn-p" onclick="handleGuest()">🎮 Гість</button>
+        <div class="divider">або</div>
+        <button class="btn btn-o" onclick="convertGuestToAccount()">📝 Гість → Акаунт</button>
+    </div>
+
+    <!-- GAME -->
+    <div id="game" style="display:none;flex-direction:column;height:100vh;overflow:hidden;">
+        <header class="header">
+            <div class="logo">NEXUS<span>·CORE</span></div>
+            <div class="main-balance" id="mainBalance">💰 <span id="mainBalanceAmount">300</span> <span class="currency">USD</span></div>
+            <div class="search">
+                <input type="text" id="searchInput" placeholder="Пошук..." oninput="updateAssetList()">
+            </div>
+            <div class="user-info">
+                <span class="name" id="userName">Гравець</span>
+                <button class="logout-btn" onclick="logout()">🚪</button>
+            </div>
+        </header>
+
+        <div class="game-selector">
+            <button class="game-btn game1 active" onclick="switchGame(1)">
+                <span class="icon">🟢</span> Трейдинг
+            </button>
+            <button class="game-btn game2" onclick="switchGame(2)">
+                <span class="icon">🔴</span> Майнінг
+            </button>
+        </div>
+
+        <div class="stats">
+            <div class="stat"><span class="stat-label">Портфель</span><span class="stat-value" id="portfolioValue">$300</span></div>
+            <div class="stat"><span class="stat-label">PnL</span><span class="stat-value" id="totalPnl">$0</span></div>
+            <div class="stat"><span class="stat-label">Хешрейт</span><span class="stat-value" id="totalHashrate">0 H/s</span></div>
+            <div class="stat"><span class="stat-label">Компанії</span><span class="stat-value" id="companiesOwned">0</span></div>
+            <div class="stat"><span class="stat-label">CPU</span><span class="stat-value" id="cpuCount">0</span></div>
+            <div class="stat"><span class="stat-label">GPU</span><span class="stat-value" id="gpuCount">0</span></div>
+            <div class="stat"><span class="stat-label">RAM</span><span class="stat-value" id="ramCount">0</span></div>
+        </div>
+
+        <div class="main">
+            <div class="left-panel">
+                <div class="chart-tabs" id="chartTabs"></div>
+                <div class="chart-container"><canvas id="priceChart"></canvas></div>
+                <div class="panel-tabs">
+                    <button class="panel-tab active" onclick="switchMarketTab('crypto')">Крипто</button>
+                    <button class="panel-tab" onclick="switchMarketTab('stocks')">Акції</button>
+                </div>
+                <div class="asset-list" id="assetList"></div>
+            </div>
+
+            <div class="trade-panel">
+                <div class="panel-content active" id="tradingPanel">
+                    <div class="asset-info">
+                        <div class="asset-info-name" id="assetName">Bitcoin</div>
+                        <div class="asset-info-price" id="assetPrice">$0</div>
+                        <div class="asset-info-change" id="assetChange">+0%</div>
+                        <div style="font-size:0.45rem;color:var(--text-secondary);" id="holdingInfo">У вас: 0</div>
+                    </div>
+
+                    <div class="buy-menu">
+                        <div class="buy-menu-title">Швидка покупка</div>
+                        <div class="quick-buy-buttons">
+                            <button class="quick-btn" onclick="quickBuy(25)">$25</button>
+                            <button class="quick-btn" onclick="quickBuy(50)">$50</button>
+                            <button class="quick-btn" onclick="quickBuy(100)">$100</button>
+                            <button class="quick-btn" onclick="quickBuy(300)">$300</button>
+                        </div>
+                        <div class="buy-menu-title">Швидкий продаж</div>
+                        <div class="quick-buy-buttons">
+                            <button class="quick-btn sell-btn" onclick="quickSell(25)">25%</button>
+                            <button class="quick-btn sell-btn" onclick="quickSell(50)">50%</button>
+                            <button class="quick-btn sell-btn" onclick="quickSell(75)">75%</button>
+                            <button class="quick-btn sell-btn" onclick="quickSell(100)">100%</button>
+                        </div>
+                        <div class="custom-buy">
+                            <input type="number" id="tradeQuantity" value="0.001" min="0.00000001" step="0.00000001" placeholder="Кількість">
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-buy" onclick="buyAsset()">Купити</button>
+                            <button class="btn btn-sell" onclick="sellAsset()">Продати</button>
+                        </div>
+                        <button class="btn-buy-company" id="btnBuyCompany" onclick="buyCompany()" disabled>
+                            🏢 Купити компанію (100 акцій)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-content" id="miningPanel">
+                    <div class="mining-panel">
+                        <div class="mining-title">⛏ ПАНЕЛЬ МАЙНІНГУ</div>
+                        
+                        <div class="mining-row">
+                            <div class="mining-col">
+                                <div style="font-size:0.38rem;color:var(--text-secondary);text-transform:uppercase;">Криптовалюта</div>
+                                <div class="mining-coin-selector" id="miningCoinSelector"></div>
+                            </div>
+                            <div class="mining-col">
+                                <div style="font-size:0.38rem;color:var(--text-secondary);text-transform:uppercase;">Категорія</div>
+                                <div class="hw-category-tabs" id="hwCategoryTabs">
+                                    <button class="hw-cat-tab active" onclick="switchMiningHwCategory('cpu')">CPU</button>
+                                    <button class="hw-cat-tab" onclick="switchMiningHwCategory('gpu')">GPU</button>
+                                    <button class="hw-cat-tab" onclick="switchMiningHwCategory('ram')">RAM</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="font-size:0.38rem;color:var(--text-secondary);text-transform:uppercase;margin:2px 0;">Комплектуючі (введіть кількість)</div>
+                        <div class="hardware-list" id="miningHardwareList"></div>
+
+                        <div style="font-size:0.38rem;color:var(--text-secondary);text-transform:uppercase;margin:2px 0;">Конфігурація ПК (виберіть комплектуючі з інвентаря)</div>
+                        <div class="pc-config" id="pcConfig"></div>
+
+                        <div class="mining-bottom">
+                            <div class="energy-cost" id="energyCost">⚡ $0/с</div>
+                            <button class="btn-mine" id="mineButton" onclick="toggleMining()" disabled>⛏ Запустити</button>
+                            <div class="mining-stats" id="miningStats" style="display:none;">
+                                <span class="mining-stat" id="miningRate">Rate: 0/s</span>
+                                <span class="mining-stat" id="miningTotal">Mined: 0</span>
+                                <span class="mining-stat" id="miningHashrate">Hash: 0 H/s</span>
+                            </div>
+                            <button class="btn-mine" id="sellMinedBtn" onclick="sellMined()" style="background:var(--gold);color:#000;margin-top:3px;display:none;">💰 Продати видобуте</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="holdings-wrap">
+                    <div class="holdings-title">📊 Портфель</div>
+                    <div class="holdings-list" id="holdingsList">
+                        <div style="font-size:0.4rem;color:var(--text-muted);text-align:center;">Порожньо</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        //  🔥 FIREBASE CONFIG
+        // ============================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1-UDrqRzfUw_32nOzqT2mAozzab5DJZk",
+            authDomain: "hamka-game.firebaseapp.com",
+            databaseURL: "https://hamka-game-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "hamka-game",
+            storageBucket: "hamka-game.firebasestorage.app",
+            messagingSenderId: "975050013138",
+            appId: "1:975050013138:web:19f42c1c5f2b2d35d6300b"
+        };
+
+        let auth = null, db = null, gameStarted = false;
+        let authMode = 'login', authListenerSet = false, currentGame = 1;
+        let tg = window.Telegram?.WebApp;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.database();
+            console.log('🔥 Firebase готовий');
+            if (tg) { tg.ready(); tg.expand(); console.log('📱 Telegram WebApp готовий'); }
+        } catch (e) {
+            console.error('❌ Помилка Firebase:', e);
+            document.getElementById('authError').textContent = '❌ Помилка підключення до сервера';
+        }
+
+        // ============================================================
+        //  📦 КОНФІГУРАЦІЯ
+        // ============================================================
+        const STARTING_CAPITAL = 300, COMMISSION = 0.005, ELECTRICITY_RATE = 15000;
+        const TICK_MS = 2000, MINING_INTERVAL = 1000;
+        const MINING_REWARD_MULTIPLIER = 0.04;
+        const COMPANY_COST = 100;
+
+        let G = {
+            uid: null, name: 'Гравець', isGuest: false, isTelegramUser: false,
+            season: 2, lastSave: Date.now(),
+            balance: STARTING_CAPITAL,
+            holdings: {},
+            ownedCompanies: [],
+            selectedAsset: 'BTC',
+            currentMarketTab: 'crypto',
+            miningCoin: 'BTC',
+            miningHwCategory: 'cpu',
+            miningActive: false,
+            pcConfig: { cpu: null, gpu: null, ram: null },
+            hardware: { cpu: {}, gpu: {}, ram: {} },
+            minedTotal: {}
+        };
+
+        const assets = [], trends = {};
+
+        // ============================================================
+        //  🔧 ДОПОМІЖНІ ФУНКЦІЇ
+        // ============================================================
+        function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+        function toast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg; el.classList.add('show');
+            clearTimeout(el._timeout);
+            el._timeout = setTimeout(() => el.classList.remove('show'), 2500);
+        }
+        function formatNum(n) {
+            if (n < 1000) return Math.floor(n).toString();
+            if (n < 1e6) return (n/1e3).toFixed(1)+'K';
+            if (n < 1e9) return (n/1e6).toFixed(1)+'M';
+            if (n < 1e12) return (n/1e9).toFixed(1)+'B';
+            return (n/1e12).toFixed(1)+'T';
+        }
+        function getAsset(s) { return assets.find(a => a.symbol === s); }
+
+        function switchGame(game) {
+            currentGame = game;
+            document.querySelectorAll('.game-selector .game-btn').forEach(b => b.classList.remove('active'));
+            if (game === 1) {
+                document.querySelector('.game-selector .game1').classList.add('active');
+                document.getElementById('tradingPanel').classList.add('active');
+                document.getElementById('miningPanel').classList.remove('active');
+            } else {
+                document.querySelector('.game-selector .game2').classList.add('active');
+                document.getElementById('miningPanel').classList.add('active');
+                document.getElementById('tradingPanel').classList.remove('active');
+            }
+            updateAllUI();
+        }
+
+        // ============================================================
+        //  📊 КОМПЛЕКТУЮЧІ (скорочено)
+        // ============================================================
+        const CPU_CATALOG = [
+            { name: 'Intel Celeron G', hashrate: 60, price: 50, power: 15 },
+            { name: 'Intel Pentium Gold', hashrate: 120, price: 75, power: 20 },
+            { name: 'Intel Core i3', hashrate: 250, price: 120, power: 35 },
+            { name: 'Intel Core i5', hashrate: 450, price: 180, power: 50 },
+            { name: 'Intel Core i7', hashrate: 800, price: 280, power: 65 },
+            { name: 'Intel Core i9', hashrate: 1400, price: 450, power: 80 },
+            { name: 'Intel Core Ultra', hashrate: 2200, price: 700, power: 100 },
+            { name: 'AMD Athlon', hashrate: 80, price: 60, power: 18 },
+            { name: 'AMD Ryzen 3', hashrate: 200, price: 100, power: 30 },
+            { name: 'AMD Ryzen 5', hashrate: 400, price: 160, power: 45 },
+            { name: 'AMD Ryzen 7', hashrate: 750, price: 250, power: 60 },
+            { name: 'AMD Ryzen 9', hashrate: 1300, price: 400, power: 75 },
+            { name: 'AMD Threadripper', hashrate: 2500, price: 800, power: 100 },
+            { name: 'Intel Xeon E', hashrate: 500, price: 200, power: 55 },
+            { name: 'Intel Xeon Gold', hashrate: 1000, price: 350, power: 70 },
+            { name: 'Intel Xeon Platinum', hashrate: 2000, price: 600, power: 90 },
+            { name: 'AMD EPYC', hashrate: 3000, price: 900, power: 120 },
+            { name: 'AMD EPYC Genoa', hashrate: 5000, price: 1500, power: 150 },
+            { name: 'AMD EPYC Turin', hashrate: 8000, price: 2500, power: 200 },
+            { name: 'Snapdragon 8', hashrate: 100, price: 80, power: 8 },
+            { name: 'Snapdragon 8 Elite', hashrate: 200, price: 130, power: 10 },
+            { name: 'Apple A', hashrate: 80, price: 70, power: 7 },
+            { name: 'Apple M', hashrate: 150, price: 110, power: 12 },
+            { name: 'Apple M Pro', hashrate: 300, price: 180, power: 18 },
+            { name: 'Apple M Max', hashrate: 500, price: 280, power: 25 },
+            { name: 'Exynos Ultra', hashrate: 120, price: 90, power: 9 },
+            { name: 'Kirin', hashrate: 70, price: 60, power: 6 },
+            { name: 'Tensor', hashrate: 90, price: 75, power: 8 },
+            { name: 'Dimensity', hashrate: 110, price: 85, power: 9 },
+            { name: 'Dimensity Ultra', hashrate: 220, price: 140, power: 12 }
+        ];
+
+        const GPU_CATALOG = [
+            { name: 'NVIDIA GT 210', hashrate: 25, price: 35, power: 12, vram: 1, brand: 'nvidia' },
+            { name: 'NVIDIA GT 710', hashrate: 40, price: 45, power: 15, vram: 1, brand: 'nvidia' },
+            { name: 'NVIDIA GT 1030', hashrate: 100, price: 70, power: 20, vram: 2, brand: 'nvidia' },
+            { name: 'AMD Radeon R5', hashrate: 80, price: 55, power: 18, vram: 2, brand: 'amd' },
+            { name: 'NVIDIA GTX 1050', hashrate: 200, price: 100, power: 30, vram: 2, brand: 'nvidia' },
+            { name: 'NVIDIA GTX 1060', hashrate: 350, price: 140, power: 40, vram: 3, brand: 'nvidia' },
+            { name: 'AMD RX 550', hashrate: 150, price: 80, power: 25, vram: 2, brand: 'amd' },
+            { name: 'AMD RX 560', hashrate: 250, price: 110, power: 32, vram: 4, brand: 'amd' },
+            { name: 'Intel Arc A310', hashrate: 180, price: 90, power: 28, vram: 4, brand: 'intel' },
+            { name: 'NVIDIA GTX 1070', hashrate: 500, price: 200, power: 50, vram: 6, brand: 'nvidia' },
+            { name: 'NVIDIA GTX 1080', hashrate: 700, price: 260, power: 60, vram: 8, brand: 'nvidia' },
+            { name: 'NVIDIA GTX 1660', hashrate: 600, price: 230, power: 55, vram: 6, brand: 'nvidia' },
+            { name: 'NVIDIA GTX 1660 Ti', hashrate: 800, price: 300, power: 65, vram: 6, brand: 'nvidia' },
+            { name: 'AMD RX 570', hashrate: 450, price: 180, power: 48, vram: 6, brand: 'amd' },
+            { name: 'AMD RX 580', hashrate: 600, price: 220, power: 55, vram: 8, brand: 'amd' },
+            { name: 'AMD RX 590', hashrate: 700, price: 260, power: 60, vram: 8, brand: 'amd' },
+            { name: 'AMD RX 5500', hashrate: 550, price: 210, power: 52, vram: 8, brand: 'amd' },
+            { name: 'Intel Arc A380', hashrate: 400, price: 160, power: 45, vram: 6, brand: 'intel' },
+            { name: 'Intel Arc A580', hashrate: 700, price: 260, power: 60, vram: 8, brand: 'intel' },
+            { name: 'NVIDIA RTX 2060', hashrate: 1200, price: 400, power: 80, vram: 8, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 2070', hashrate: 1800, price: 550, power: 100, vram: 10, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 2080', hashrate: 2500, price: 750, power: 120, vram: 12, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3050', hashrate: 1500, price: 480, power: 90, vram: 8, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3060', hashrate: 2200, price: 650, power: 110, vram: 12, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3070', hashrate: 3200, price: 850, power: 130, vram: 14, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3080', hashrate: 4500, price: 1200, power: 160, vram: 16, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3090', hashrate: 6000, price: 1600, power: 200, vram: 24, brand: 'nvidia' },
+            { name: 'AMD RX 5600', hashrate: 1400, price: 450, power: 85, vram: 8, brand: 'amd' },
+            { name: 'AMD RX 5700', hashrate: 2000, price: 600, power: 105, vram: 12, brand: 'amd' },
+            { name: 'AMD RX 6600', hashrate: 2200, price: 650, power: 110, vram: 12, brand: 'amd' },
+            { name: 'AMD RX 6700', hashrate: 3000, price: 800, power: 130, vram: 16, brand: 'amd' },
+            { name: 'AMD RX 6800', hashrate: 3800, price: 1000, power: 150, vram: 16, brand: 'amd' },
+            { name: 'AMD RX 6900', hashrate: 4500, price: 1200, power: 160, vram: 20, brand: 'amd' },
+            { name: 'Intel Arc A750', hashrate: 2800, price: 750, power: 120, vram: 14, brand: 'intel' },
+            { name: 'Intel Arc A770', hashrate: 3500, price: 950, power: 140, vram: 16, brand: 'intel' },
+            { name: 'NVIDIA RTX 4060', hashrate: 4000, price: 1100, power: 150, vram: 18, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 4070', hashrate: 5000, price: 1400, power: 180, vram: 20, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 4080', hashrate: 6500, price: 1800, power: 210, vram: 24, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 4090', hashrate: 8500, price: 2400, power: 260, vram: 28, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 5090', hashrate: 10000, price: 3000, power: 320, vram: 32, brand: 'nvidia' },
+            { name: 'AMD RX 7600', hashrate: 3800, price: 1050, power: 145, vram: 18, brand: 'amd' },
+            { name: 'AMD RX 7700', hashrate: 4800, price: 1350, power: 175, vram: 20, brand: 'amd' },
+            { name: 'AMD RX 7800', hashrate: 6000, price: 1700, power: 200, vram: 24, brand: 'amd' },
+            { name: 'AMD RX 7900', hashrate: 7500, price: 2100, power: 240, vram: 28, brand: 'amd' },
+            { name: 'AMD RX 7950', hashrate: 9000, price: 2700, power: 280, vram: 32, brand: 'amd' },
+            { name: 'NVIDIA Tesla T4', hashrate: 5000, price: 1500, power: 180, vram: 24, brand: 'nvidia' },
+            { name: 'NVIDIA Tesla V100', hashrate: 8000, price: 2400, power: 260, vram: 32, brand: 'nvidia' },
+            { name: 'NVIDIA A100', hashrate: 12000, price: 3600, power: 320, vram: 40, brand: 'nvidia' },
+            { name: 'NVIDIA H100', hashrate: 22000, price: 6000, power: 450, vram: 48, brand: 'nvidia' },
+            { name: 'AMD Instinct MI50', hashrate: 6000, price: 1800, power: 220, vram: 32, brand: 'amd' },
+            { name: 'AMD Instinct MI100', hashrate: 9000, price: 2800, power: 280, vram: 40, brand: 'amd' },
+            { name: 'AMD Instinct MI200', hashrate: 14000, price: 4200, power: 350, vram: 48, brand: 'amd' },
+            { name: 'NVIDIA RTX 3050 Mobile', hashrate: 1500, price: 480, power: 90, vram: 8, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3060 Mobile', hashrate: 2200, price: 650, power: 110, vram: 12, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3070 Mobile', hashrate: 3200, price: 850, power: 130, vram: 14, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 3080 Mobile', hashrate: 4500, price: 1200, power: 160, vram: 16, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 4060 Mobile', hashrate: 3500, price: 950, power: 140, vram: 16, brand: 'nvidia' },
+            { name: 'NVIDIA RTX 4070 Mobile', hashrate: 4500, price: 1200, power: 160, vram: 18, brand: 'nvidia' }
+        ];
+
+        const RAM_CATALOG = [
+            { name: 'DDR2 512MB', hashrate: 10, price: 50, power: 3 },
+            { name: 'DDR2 1GB', hashrate: 20, price: 60, power: 4 },
+            { name: 'DDR2 2GB', hashrate: 40, price: 75, power: 5 },
+            { name: 'DDR2 4GB', hashrate: 80, price: 100, power: 7 },
+            { name: 'DDR3 2GB', hashrate: 50, price: 80, power: 6 },
+            { name: 'DDR3 4GB', hashrate: 100, price: 110, power: 8 },
+            { name: 'DDR3 8GB', hashrate: 200, price: 150, power: 10 },
+            { name: 'DDR3 16GB', hashrate: 400, price: 220, power: 14 },
+            { name: 'DDR4 4GB', hashrate: 120, price: 120, power: 9 },
+            { name: 'DDR4 8GB', hashrate: 250, price: 160, power: 12 },
+            { name: 'DDR4 16GB', hashrate: 500, price: 240, power: 16 },
+            { name: 'DDR4 32GB', hashrate: 1000, price: 380, power: 22 },
+            { name: 'DDR4 64GB', hashrate: 2000, price: 600, power: 30 },
+            { name: 'DDR4 128GB', hashrate: 4000, price: 1000, power: 45 },
+            { name: 'DDR5 8GB', hashrate: 300, price: 180, power: 14 },
+            { name: 'DDR5 16GB', hashrate: 600, price: 260, power: 18 },
+            { name: 'DDR5 32GB', hashrate: 1200, price: 420, power: 25 },
+            { name: 'DDR5 64GB', hashrate: 2400, price: 700, power: 35 },
+            { name: 'DDR5 128GB', hashrate: 4800, price: 1200, power: 50 },
+            { name: 'DDR5 256GB', hashrate: 10000, price: 2500, power: 80 },
+            { name: 'LPDDR4 2GB', hashrate: 60, price: 85, power: 5 },
+            { name: 'LPDDR4 4GB', hashrate: 120, price: 115, power: 7 },
+            { name: 'LPDDR4 8GB', hashrate: 250, price: 160, power: 10 },
+            { name: 'LPDDR4 16GB', hashrate: 500, price: 240, power: 14 },
+            { name: 'LPDDR5 4GB', hashrate: 140, price: 125, power: 8 },
+            { name: 'LPDDR5 8GB', hashrate: 280, price: 170, power: 11 },
+            { name: 'LPDDR5 12GB', hashrate: 420, price: 210, power: 14 },
+            { name: 'LPDDR5 16GB', hashrate: 560, price: 260, power: 17 },
+            { name: 'LPDDR5 24GB', hashrate: 840, price: 340, power: 22 },
+            { name: 'LPDDR5 32GB', hashrate: 1120, price: 420, power: 28 },
+            { name: 'ECC DDR4 16GB', hashrate: 600, price: 280, power: 20 },
+            { name: 'ECC DDR4 32GB', hashrate: 1200, price: 450, power: 30 },
+            { name: 'ECC DDR4 64GB', hashrate: 2400, price: 750, power: 45 },
+            { name: 'ECC DDR4 128GB', hashrate: 4800, price: 1300, power: 65 },
+            { name: 'ECC DDR5 32GB', hashrate: 1500, price: 500, power: 35 },
+            { name: 'ECC DDR5 64GB', hashrate: 3000, price: 850, power: 50 },
+            { name: 'ECC DDR5 128GB', hashrate: 6000, price: 1500, power: 70 },
+            { name: 'ECC DDR5 256GB', hashrate: 12000, price: 2800, power: 100 },
+            { name: 'ECC DDR5 512GB', hashrate: 24000, price: 5000, power: 150 },
+            { name: 'DDR2 8GB', hashrate: 160, price: 160, power: 10 },
+            { name: 'DDR2 16GB', hashrate: 320, price: 240, power: 15 },
+            { name: 'DDR2 32GB', hashrate: 640, price: 380, power: 22 },
+            { name: 'DDR3 32GB', hashrate: 800, price: 380, power: 22 },
+            { name: 'DDR3 64GB', hashrate: 1600, price: 600, power: 32 },
+            { name: 'DDR4 256GB', hashrate: 8000, price: 2000, power: 70 },
+            { name: 'DDR5 512GB', hashrate: 20000, price: 5000, power: 120 },
+            { name: 'LPDDR4 32GB', hashrate: 1000, price: 400, power: 26 },
+            { name: 'LPDDR5 48GB', hashrate: 1680, price: 560, power: 35 },
+            { name: 'ECC DDR4 256GB', hashrate: 9600, price: 2400, power: 85 },
+            { name: 'ECC DDR5 512GB', hashrate: 24000, price: 5000, power: 150 },
+            { name: 'ECC DDR5 1TB', hashrate: 48000, price: 10000, power: 250 }
+        ];
+
+        const cryptoData = [
+            { symbol: 'BTC', name: 'Bitcoin', price: 42000, trend: 0.0012, difficulty: 1.0 },
+            { symbol: 'ETH', name: 'Ethereum', price: 2200, trend: 0.0015, difficulty: 0.8 },
+            { symbol: 'SOL', name: 'Solana', price: 150, trend: 0.002, difficulty: 0.3 },
+            { symbol: 'DOGE', name: 'Dogecoin', price: 0.08, trend: -0.001, difficulty: 0.1 },
+            { symbol: 'BNB', name: 'BNB', price: 310, trend: 0.0008, difficulty: 0.7 },
+            { symbol: 'XRP', name: 'Ripple', price: 0.55, trend: -0.0005, difficulty: 0.2 },
+            { symbol: 'ADA', name: 'Cardano', price: 0.38, trend: 0.0006, difficulty: 0.15 },
+            { symbol: 'MATIC', name: 'Polygon', price: 0.72, trend: 0.001, difficulty: 0.25 },
+            { symbol: 'LTC', name: 'Litecoin', price: 68, trend: 0.0004, difficulty: 0.5 },
+            { symbol: 'DOT', name: 'Polkadot', price: 5.2, trend: -0.0008, difficulty: 0.4 },
+            { symbol: 'AVAX', name: 'Avalanche', price: 35, trend: 0.0018, difficulty: 0.35 },
+            { symbol: 'LINK', name: 'Chainlink', price: 14, trend: 0.0012, difficulty: 0.3 },
+            { symbol: 'UNI', name: 'Uniswap', price: 6.8, trend: 0.0009, difficulty: 0.28 },
+            { symbol: 'ATOM', name: 'Cosmos', price: 8.5, trend: -0.0006, difficulty: 0.32 },
+            { symbol: 'TON', name: 'Toncoin', price: 5.4, trend: 0.0022, difficulty: 0.22 },
+            { symbol: 'SHIB', name: 'Shiba Inu', price: 0.00002, trend: -0.002, difficulty: 0.05 },
+            { symbol: 'TRX', name: 'TRON', price: 0.12, trend: 0.0007, difficulty: 0.08 },
+            { symbol: 'XMR', name: 'Monero', price: 165, trend: 0.0011, difficulty: 0.6 },
+            { symbol: 'BCH', name: 'Bitcoin Cash', price: 240, trend: -0.0009, difficulty: 0.45 },
+            { symbol: 'ETC', name: 'Ethereum Classic', price: 18, trend: 0.0013, difficulty: 0.5 },
+            { symbol: 'ZEC', name: 'Zcash', price: 28, trend: 0.0007, difficulty: 0.55 },
+            { symbol: 'DASH', name: 'Dash', price: 27, trend: -0.0004, difficulty: 0.5 },
+            { symbol: 'RVN', name: 'Ravencoin', price: 0.02, trend: 0.0015, difficulty: 0.1 },
+            { symbol: 'ERG', name: 'Ergo', price: 1.2, trend: 0.001, difficulty: 0.2 },
+            { symbol: 'KDA', name: 'Kadena', price: 0.6, trend: 0.0018, difficulty: 0.25 },
+            { symbol: 'KAS', name: 'Kaspa', price: 0.12, trend: 0.0025, difficulty: 0.2 },
+            { symbol: 'ALPH', name: 'Alephium', price: 1.8, trend: 0.0016, difficulty: 0.3 },
+            { symbol: 'NEXA', name: 'Nexa', price: 0.00001, trend: 0.002, difficulty: 0.03 },
+            { symbol: 'CSPR', name: 'Casper', price: 0.03, trend: 0.0015, difficulty: 0.08 },
+            { symbol: 'MINA', name: 'Mina', price: 0.55, trend: 0.0018, difficulty: 0.15 },
+            { symbol: 'IMX', name: 'Immutable X', price: 1.2, trend: 0.002, difficulty: 0.2 },
+            { symbol: 'FIL', name: 'Filecoin', price: 4.5, trend: -0.0006, difficulty: 0.35 },
+            { symbol: 'ICP', name: 'Internet Computer', price: 8, trend: 0.0014, difficulty: 0.4 },
+            { symbol: 'HNT', name: 'Helium', price: 6, trend: -0.0008, difficulty: 0.3 },
+            { symbol: 'GRT', name: 'The Graph', price: 0.18, trend: 0.0016, difficulty: 0.12 },
+            { symbol: 'AR', name: 'Arweave', price: 25, trend: 0.0009, difficulty: 0.3 },
+            { symbol: 'STX', name: 'Stacks', price: 1.5, trend: 0.0012, difficulty: 0.25 },
+            { symbol: 'ROSE', name: 'Oasis', price: 0.08, trend: -0.0007, difficulty: 0.1 },
+            { symbol: 'FLUX', name: 'Flux', price: 0.55, trend: -0.0006, difficulty: 0.15 },
+            { symbol: 'XLM', name: 'Stellar', price: 0.11, trend: -0.0003, difficulty: 0.1 },
+        ];
+        const stockData = [
+            { symbol: 'AAPL', name: 'Apple', price: 190, trend: 0.001 },
+            { symbol: 'MSFT', name: 'Microsoft', price: 370, trend: 0.0012 },
+            { symbol: 'GOOGL', name: 'Alphabet', price: 140, trend: 0.0008 },
+            { symbol: 'AMZN', name: 'Amazon', price: 145, trend: -0.0005 },
+            { symbol: 'TSLA', name: 'Tesla', price: 240, trend: -0.002 },
+            { symbol: 'NVDA', name: 'NVIDIA', price: 480, trend: 0.003 },
+            { symbol: 'META', name: 'Meta', price: 340, trend: 0.0015 },
+            { symbol: 'NFLX', name: 'Netflix', price: 450, trend: -0.0007 },
+            { symbol: 'AMD', name: 'AMD', price: 120, trend: 0.002 },
+            { symbol: 'INTC', name: 'Intel', price: 35, trend: -0.0012 },
+            { symbol: 'ADBE', name: 'Adobe', price: 550, trend: 0.0009 },
+            { symbol: 'CRM', name: 'Salesforce', price: 250, trend: 0.0007 },
+            { symbol: 'ORCL', name: 'Oracle', price: 115, trend: -0.0003 },
+            { symbol: 'IBM', name: 'IBM', price: 160, trend: 0.0004 },
+            { symbol: 'PYPL', name: 'PayPal', price: 62, trend: -0.001 },
+            { symbol: 'SHOP', name: 'Shopify', price: 68, trend: 0.0015 },
+            { symbol: 'UBER', name: 'Uber', price: 48, trend: 0.0011 },
+            { symbol: 'ABNB', name: 'Airbnb', price: 135, trend: -0.0008 },
+            { symbol: 'COIN', name: 'Coinbase', price: 120, trend: 0.0025 },
+            { symbol: 'SQ', name: 'Block', price: 55, trend: 0.0018 },
+            { symbol: 'SPOT', name: 'Spotify', price: 180, trend: 0.0012 },
+            { symbol: 'DDOG', name: 'Datadog', price: 115, trend: 0.0017 },
+            { symbol: 'CRWD', name: 'CrowdStrike', price: 250, trend: 0.0021 },
+            { symbol: 'SNOW', name: 'Snowflake', price: 160, trend: -0.0009 },
+            { symbol: 'PLTR', name: 'Palantir', price: 20, trend: 0.003 },
+            { symbol: 'RBLX', name: 'Roblox', price: 35, trend: -0.001 },
+            { symbol: 'HOOD', name: 'Robinhood', price: 15, trend: 0.002 },
+            { symbol: 'SOFI', name: 'SoFi', price: 8, trend: 0.0025 },
+            { symbol: 'DKNG', name: 'DraftKings', price: 35, trend: -0.0015 },
+            { symbol: 'NET', name: 'Cloudflare', price: 80, trend: 0.0022 },
+            { symbol: 'MDB', name: 'MongoDB', price: 350, trend: 0.0015 },
+            { symbol: 'TEAM', name: 'Atlassian', price: 200, trend: -0.0008 },
+            { symbol: 'ZM', name: 'Zoom', price: 65, trend: -0.0015 },
+            { symbol: 'SNAP', name: 'Snapchat', price: 12, trend: -0.002 },
+            { symbol: 'PINS', name: 'Pinterest', price: 28, trend: 0.0009 },
+            { symbol: 'ROKU', name: 'Roku', price: 62, trend: -0.0013 },
+            { symbol: 'FSLY', name: 'Fastly', price: 15, trend: 0.001 },
+            { symbol: 'PTON', name: 'Peloton', price: 5, trend: -0.003 },
+            { symbol: 'BYND', name: 'Beyond Meat', price: 8, trend: -0.002 },
+            { symbol: 'CSCO', name: 'Cisco', price: 48, trend: -0.0006 },
+        ];
+
+        // ============================================================
+        //  📊 ІНІЦІАЛІЗАЦІЯ
+        // ============================================================
+        function initAssets() {
+            cryptoData.forEach(d => {
+                assets.push({...d, type: 'crypto', priceHistory: generateHistory(d.price, d.trend, 50), minedTotal: 0});
+                trends[d.symbol] = d.trend;
+            });
+            stockData.forEach(d => {
+                assets.push({...d, type: 'stock', priceHistory: generateHistory(d.price, d.trend, 50)});
+                trends[d.symbol] = d.trend;
+            });
+            document.getElementById('chartTabs').innerHTML = ['BTC','ETH','SOL','DOGE','AAPL'].map(s => 
+                `<button class="chart-tab ${s==='BTC'?'active':''}" onclick="selectAsset('${s}')">${s}</button>`
+            ).join('');
+            updateMiningCoinSelector();
+            updatePCConfig();
+            updateMiningHardwareList();
+            updateMineButton();
+        }
+        function generateHistory(startPrice, trend, length) {
+            const h = []; let p = startPrice;
+            for (let i=0; i<length; i++) { const n = (Math.random()-0.5)*0.002; p = p*(1+trend+n); h.push(p); }
+            return h;
+        }
+
+        // ============================================================
+        //  📊 МАЙНІНГ
+        // ============================================================
+        function updateMiningCoinSelector() {
+            const sel = document.getElementById('miningCoinSelector');
+            if (!sel) return;
+            sel.innerHTML = cryptoData.map(c => 
+                `<button class="mining-coin-btn ${G.miningCoin===c.symbol?'active':''}" onclick="selectMiningCoin('${c.symbol}')">${c.symbol}</button>`
+            ).join('');
+        }
+        function selectMiningCoin(s) { G.miningCoin = s; updateMiningCoinSelector(); updateMiningUI(); }
+
+        // ============================================================
+        //  🖥️ КОНФІГУРАЦІЯ ПК З ВИБОРОМ
+        // ============================================================
+        function updatePCConfig() {
+            const c = document.getElementById('pcConfig');
+            if (!c) return;
+            
+            const cpuOptions = Object.keys(G.hardware.cpu).filter(name => G.hardware.cpu[name] > 0);
+            const gpuOptions = Object.keys(G.hardware.gpu).filter(name => G.hardware.gpu[name] > 0);
+            const ramOptions = Object.keys(G.hardware.ram).filter(name => G.hardware.ram[name] > 0);
+            
+            const hasCPU = G.pcConfig.cpu !== null;
+            const hasGPU = G.pcConfig.gpu !== null;
+            const hasRAM = G.pcConfig.ram !== null;
+            const allReady = hasCPU && hasGPU && hasRAM;
+            
+            let cpuSelect = `<select id="cpuSelect" class="hw-select">`;
+            cpuSelect += `<option value="">-- Виберіть CPU --</option>`;
+            cpuOptions.forEach(name => {
+                const selected = G.pcConfig.cpu === name ? 'selected' : '';
+                const qty = G.hardware.cpu[name] || 0;
+                cpuSelect += `<option value="${name}" ${selected}>${name} (${qty}шт)</option>`;
+            });
+            cpuSelect += `</select>`;
+            
+            let gpuSelect = `<select id="gpuSelect" class="hw-select">`;
+            gpuSelect += `<option value="">-- Виберіть GPU --</option>`;
+            gpuOptions.forEach(name => {
+                const selected = G.pcConfig.gpu === name ? 'selected' : '';
+                const qty = G.hardware.gpu[name] || 0;
+                gpuSelect += `<option value="${name}" ${selected}>${name} (${qty}шт)</option>`;
+            });
+            gpuSelect += `</select>`;
+            
+            let ramSelect = `<select id="ramSelect" class="hw-select">`;
+            ramSelect += `<option value="">-- Виберіть RAM --</option>`;
+            ramOptions.forEach(name => {
+                const selected = G.pcConfig.ram === name ? 'selected' : '';
+                const qty = G.hardware.ram[name] || 0;
+                ramSelect += `<option value="${name}" ${selected}>${name} (${qty}шт)</option>`;
+            });
+            ramSelect += `</select>`;
+            
+            const currentCPU = G.pcConfig.cpu || '❌ не вибрано';
+            const currentGPU = G.pcConfig.gpu || '❌ не вибрано';
+            const currentRAM = G.pcConfig.ram || '❌ не вибрано';
+            
+            c.innerHTML = `
+                <div style="font-size:0.4rem;color:var(--text-secondary);margin-bottom:3px;text-align:center;">
+                    🔧 Виберіть комплектуючі з інвентаря
+                </div>
+                <div class="select-row">
+                    <span style="font-size:0.4rem;font-weight:600;min-width:22px;">CPU</span>
+                    ${cpuSelect}
+                    <button class="btn-set" onclick="setPCComponent('cpu')">Встановити</button>
+                    <span style="font-size:0.35rem;color:${hasCPU ? 'var(--green)' : 'var(--red)'};">${hasCPU ? '✅' : '❌'}</span>
+                </div>
+                <div class="select-row">
+                    <span style="font-size:0.4rem;font-weight:600;min-width:22px;">GPU</span>
+                    ${gpuSelect}
+                    <button class="btn-set" onclick="setPCComponent('gpu')">Встановити</button>
+                    <span style="font-size:0.35rem;color:${hasGPU ? 'var(--green)' : 'var(--red)'};">${hasGPU ? '✅' : '❌'}</span>
+                </div>
+                <div class="select-row">
+                    <span style="font-size:0.4rem;font-weight:600;min-width:22px;">RAM</span>
+                    ${ramSelect}
+                    <button class="btn-set" onclick="setPCComponent('ram')">Встановити</button>
+                    <span style="font-size:0.35rem;color:${hasRAM ? 'var(--green)' : 'var(--red)'};">${hasRAM ? '✅' : '❌'}</span>
+                </div>
+                <div style="text-align:center;font-size:0.4rem;color:${allReady ? 'var(--green)' : 'var(--red)'};margin-top:2px;">
+                    ${allReady ? '✅ Всі компоненти встановлено!' : '⚠️ Потрібні всі 3 компоненти для майнінгу'}
+                </div>
+                <div style="text-align:center;font-size:0.35rem;color:var(--text-secondary);margin-top:1px;">
+                    CPU: ${currentCPU} | GPU: ${currentGPU} | RAM: ${currentRAM}
+                </div>
+            `;
+            updateMineButton();
+        }
+
+        function setPCComponent(type) {
+            const selectId = type === 'cpu' ? 'cpuSelect' : type === 'gpu' ? 'gpuSelect' : 'ramSelect';
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const name = select.value;
+            if (!name) { toast('❌ Виберіть комплектуючу'); return; }
+            
+            const key = type;
+            if (!G.hardware[key][name] || G.hardware[key][name] <= 0) {
+                toast('❌ Цієї комплектуючої немає в інвентарі');
+                return;
+            }
+            
+            G.pcConfig[type] = name;
+            toast(`✅ Встановлено ${name} як ${type.toUpperCase()}`);
+            updatePCConfig();
+            updateAllUI();
+            saveGame();
+        }
+
+        function updateMineButton() {
+            const btn = document.getElementById('mineButton');
+            if (!btn) return;
+            const hasCPU = G.pcConfig.cpu !== null;
+            const hasGPU = G.pcConfig.gpu !== null;
+            const hasRAM = G.pcConfig.ram !== null;
+            const allReady = hasCPU && hasGPU && hasRAM;
+            btn.disabled = !allReady;
+            
+            const sellBtn = document.getElementById('sellMinedBtn');
+            if (sellBtn) {
+                const hasMined = Object.values(G.minedTotal).reduce((a,b) => a + b, 0) > 0;
+                sellBtn.style.display = hasMined ? 'block' : 'none';
+            }
+        }
+
+        // ============================================================
+        //  🏷️ ПЕРЕМИКАННЯ КАТЕГОРІЙ
+        // ============================================================
+        function switchMiningHwCategory(cat) {
+            G.miningHwCategory = cat;
+            document.querySelectorAll('#hwCategoryTabs .hw-cat-tab').forEach(t => t.classList.remove('active'));
+            const tabs = document.querySelectorAll('#hwCategoryTabs .hw-cat-tab');
+            const names = ['cpu', 'gpu', 'ram'];
+            const idx = names.indexOf(cat);
+            if (tabs[idx]) tabs[idx].classList.add('active');
+            updateMiningHardwareList();
+        }
+
+        // ============================================================
+        //  🛒 МАГАЗИН КОМПЛЕКТУЮЧИХ З КІЛЬКІСТЮ
+        // ============================================================
+        function updateMiningHardwareList() {
+            const list = document.getElementById('miningHardwareList');
+            if (!list) return;
+            
+            let catalog = [];
+            if (G.miningHwCategory === 'cpu') catalog = CPU_CATALOG;
+            else if (G.miningHwCategory === 'gpu') catalog = GPU_CATALOG;
+            else if (G.miningHwCategory === 'ram') catalog = RAM_CATALOG;
+            
+            const key = G.miningHwCategory;
+            list.innerHTML = catalog.map(item => {
+                const qty = G.hardware[key][item.name] || 0;
+                const canAfford = G.balance >= item.price;
+                const isSelected = G.pcConfig[key] === item.name;
+                const brand = item.brand || 'other';
+                const brandClass = brand === 'nvidia' ? 'nvidia' : brand === 'amd' ? 'amd' : brand === 'intel' ? 'intel' : '';
+                const brandLabel = brand === 'nvidia' ? 'NVIDIA' : brand === 'amd' ? 'AMD' : brand === 'intel' ? 'Intel' : '';
+                const spec = G.miningHwCategory === 'ram' ? '' : (item.vram ? `${item.vram}GB` : '');
+                
+                return `<div class="hw-item" style="${isSelected ? 'border-color:var(--green);' : ''}">
+                    <span class="hw-item-name">${item.name} ${isSelected ? '✅' : ''}</span>
+                    ${brandLabel ? `<span class="hw-brand ${brandClass}">${brandLabel}</span>` : ''}
+                    <span class="hw-item-spec">${item.hashrate}H/s|${item.power}W${spec ? '|'+spec : ''}</span>
+                    <span class="hw-item-price">$${item.price}</span>
+                    <input type="number" class="hw-qty-input" id="qty_${item.name.replace(/\s/g,'_')}" value="1" min="1" max="999">
+                    <button class="hw-buy-btn" onclick="buyHardwareQty('${key}','${item.name}',${item.price})" ${!canAfford?'disabled':''}>Купити</button>
+                    <span class="hw-qty">${qty}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // ============================================================
+        //  🛒 ПОКУПКА З КІЛЬКІСТЮ
+        // ============================================================
+        function buyHardwareQty(category, name, price) {
+            const inputId = 'qty_' + name.replace(/\s/g,'_');
+            const input = document.getElementById(inputId);
+            let qty = parseInt(input ? input.value : 1);
+            if (!qty || qty < 1) qty = 1;
+            
+            const totalCost = price * qty;
+            if (G.balance < totalCost) {
+                toast(`❌ Недостатньо коштів! Потрібно $${totalCost}, у вас $${G.balance.toFixed(2)}`);
+                return;
+            }
+            
+            G.balance -= totalCost;
+            const key = category;
+            G.hardware[key][name] = (G.hardware[key][name] || 0) + qty;
+            
+            // Якщо ще не встановлено в конфігурацію - встановлюємо перший
+            if (G.pcConfig[key] === null) {
+                G.pcConfig[key] = name;
+            }
+            
+            toast(`✅ Куплено ${qty}шт ${name} за $${totalCost}`);
+            updateMiningHardwareList();
+            updatePCConfig();
+            updateAllUI();
+            saveGame();
+        }
+
+        function getTotalHashrate() {
+            let h = 0;
+            if (G.pcConfig.cpu) {
+                const item = CPU_CATALOG.find(x => x.name === G.pcConfig.cpu);
+                if (item) h += item.hashrate * (G.hardware.cpu[item.name] || 1);
+            }
+            if (G.pcConfig.gpu) {
+                const item = GPU_CATALOG.find(x => x.name === G.pcConfig.gpu);
+                if (item) h += item.hashrate * (G.hardware.gpu[item.name] || 1);
+            }
+            if (G.pcConfig.ram) {
+                const item = RAM_CATALOG.find(x => x.name === G.pcConfig.ram);
+                if (item) h += item.hashrate * (G.hardware.ram[item.name] || 1);
+            }
+            return h;
+        }
+
+        function getPowerConsumption() {
+            let p = 0;
+            if (G.pcConfig.cpu) {
+                const item = CPU_CATALOG.find(x => x.name === G.pcConfig.cpu);
+                if (item) p += item.power * (G.hardware.cpu[item.name] || 1);
+            }
+            if (G.pcConfig.gpu) {
+                const item = GPU_CATALOG.find(x => x.name === G.pcConfig.gpu);
+                if (item) p += item.power * (G.hardware.gpu[item.name] || 1);
+            }
+            if (G.pcConfig.ram) {
+                const item = RAM_CATALOG.find(x => x.name === G.pcConfig.ram);
+                if (item) p += item.power * (G.hardware.ram[item.name] || 1);
+            }
+            return p;
+        }
+
+        function getElectricityCostPerSecond() { return (getPowerConsumption()/1000) * ELECTRICITY_RATE / 3600; }
+
+        function toggleMining() {
+            if (G.miningActive) {
+                G.miningActive = false;
+                updateMiningUI();
+                toast('⏹ Майнінг зупинено');
+                return;
+            }
+            
+            if (!G.pcConfig.cpu || !G.pcConfig.gpu || !G.pcConfig.ram) {
+                toast('⚠️ Потрібні всі 3 компоненти: CPU, GPU та RAM');
+                return;
+            }
+            
+            G.miningActive = true;
+            updateMiningUI();
+            toast('⛏ Майнінг запущено!');
+        }
+
+        function sellMined() {
+            const asset = getAsset(G.miningCoin);
+            if (!asset) { toast('❌ Помилка'); return; }
+            const mined = G.minedTotal[asset.symbol] || 0;
+            if (mined <= 0) { toast('❌ Немає видобутої криптовалюти'); return; }
+            
+            const price = asset.priceHistory[asset.priceHistory.length - 1];
+            const value = mined * price * (1 - COMMISSION);
+            
+            G.balance += value;
+            
+            const holding = G.holdings[asset.symbol];
+            if (holding) {
+                holding.quantity += mined;
+                holding.avgPrice = (holding.avgPrice * (holding.quantity - mined) + price * mined) / holding.quantity;
+            } else {
+                G.holdings[asset.symbol] = { quantity: mined, avgPrice: price };
+            }
+            
+            toast(`💰 Продано ${mined.toFixed(8)} ${asset.symbol} за $${value.toFixed(2)}`);
+            G.minedTotal[asset.symbol] = 0;
+            updateAllUI();
+            saveGame();
+        }
+
+        function processMining() {
+            if (!G.miningActive) return;
+            
+            if (!G.pcConfig.cpu || !G.pcConfig.gpu || !G.pcConfig.ram) {
+                G.miningActive = false;
+                updateMiningUI();
+                toast('⛔ Майнінг зупинено: відсутні компоненти');
+                return;
+            }
+            
+            const asset = getAsset(G.miningCoin);
+            if (!asset || asset.type !== 'crypto') return;
+            const hashrate = getTotalHashrate();
+            if (hashrate <= 0) return;
+            const price = asset.priceHistory[asset.priceHistory.length - 1];
+            const difficulty = asset.difficulty || 0.5;
+            const priceFactor = Math.max(0.1, Math.min(3, price / 100));
+            
+            const minedAmount = (hashrate * 0.0000008 * MINING_REWARD_MULTIPLIER * priceFactor) / difficulty;
+            
+            if (minedAmount > 0) {
+                if (!G.minedTotal[asset.symbol]) G.minedTotal[asset.symbol] = 0;
+                G.minedTotal[asset.symbol] += minedAmount;
+                asset.minedTotal += minedAmount;
+                const sellBtn = document.getElementById('sellMinedBtn');
+                if (sellBtn) sellBtn.style.display = 'block';
+            }
+            
+            const electricityCost = getElectricityCostPerSecond();
+            if (electricityCost > 0) {
+                G.balance -= electricityCost;
+                if (G.balance < 0) { 
+                    G.balance = 0; 
+                    G.miningActive = false; 
+                    updateMiningUI();
+                    toast('⛔ Не вистачає на електроенергію!'); 
+                }
+            }
+            updateAllUI(); 
+            saveGame();
+        }
+
+        function updateMiningUI() {
+            const asset = getAsset(G.miningCoin);
+            if (!asset) return;
+            const hashrate = getTotalHashrate(), ec = getElectricityCostPerSecond();
+            document.getElementById('energyCost').textContent = `⚡ $${ec.toFixed(4)}/с`;
+            const btn = document.getElementById('mineButton'), stats = document.getElementById('miningStats');
+            if (btn && stats) {
+                if (G.miningActive) {
+                    btn.textContent = '⛏ Активний'; btn.classList.add('active');
+                    stats.style.display = 'flex';
+                    const price = asset.priceHistory[asset.priceHistory.length - 1];
+                    const priceFactor = Math.max(0.1, Math.min(3, price/100));
+                    const rate = hashrate * 0.0000008 * MINING_REWARD_MULTIPLIER * priceFactor / asset.difficulty;
+                    document.getElementById('miningRate').textContent = `Rate: ${rate.toFixed(8)}/s`;
+                    document.getElementById('miningTotal').textContent = `Mined: ${(G.minedTotal[asset.symbol]||0).toFixed(8)}`;
+                    document.getElementById('miningHashrate').textContent = `Hash: ${hashrate} H/s`;
+                } else {
+                    btn.textContent = '⛏ Запустити'; btn.classList.remove('active');
+                    stats.style.display = 'none';
+                }
+            }
+            updateMineButton();
+        }
+
+        // ============================================================
+        //  📈 ТРЕЙДИНГ (скорочено)
+        // ============================================================
+        function switchMarketTab(t) {
+            G.currentMarketTab = t;
+            document.querySelectorAll('.panel-tab').forEach(b => b.classList.toggle('active', b.textContent.includes(t==='crypto'?'Крипто':'Акції')));
+            updateAssetList();
+        }
+        function selectAsset(s) { G.selectedAsset = s; updateAllUI(); }
+
+        function updateAssetList() {
+            const list = document.getElementById('assetList'), search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = assets.filter(a => {
+                const mt = G.currentMarketTab === 'crypto' ? a.type === 'crypto' : a.type === 'stock';
+                const ms = a.symbol.toLowerCase().includes(search) || a.name.toLowerCase().includes(search);
+                return mt && ms;
+            });
+            if (!filtered.length) { list.innerHTML = '<div style="font-size:0.45rem;color:var(--text-muted);text-align:center;padding:4px;">Нічого не знайдено</div>'; return; }
+            list.innerHTML = filtered.map(a => {
+                const price = a.priceHistory[a.priceHistory.length-1];
+                const prev = a.priceHistory[a.priceHistory.length-2] || price;
+                const change = ((price - prev) / prev) * 100;
+                const holding = G.holdings[a.symbol];
+                const isOwned = G.ownedCompanies.includes(a.symbol);
+                return `<div class="asset-item ${G.selectedAsset===a.symbol?'selected':''}" onclick="selectAsset('${a.symbol}')">
+                    <span class="asset-symbol">${a.symbol}</span>
+                    <span class="asset-name">${a.name} ${holding && holding.quantity > 0 ? '📦' : ''} ${isOwned ? '🏢' : ''}</span>
+                    <span class="asset-price">$${price.toFixed(2)}</span>
+                    <span class="asset-change ${change>=0?'positive':'negative'}">${change>=0?'+':''}${change.toFixed(1)}%</span>
+                </div>`;
+            }).join('');
+        }
+
+        function updatePrices() {
+            const asset = getAsset(G.selectedAsset);
+            if (!asset) return;
+            const price = asset.priceHistory[asset.priceHistory.length-1];
+            const prev = asset.priceHistory[asset.priceHistory.length-2] || price;
+            const change = ((price - prev) / prev) * 100;
+            const holding = G.holdings[asset.symbol];
+            const qty = holding ? holding.quantity : 0;
+
+            document.getElementById('assetName').textContent = `${asset.symbol} — ${asset.name}`;
+            document.getElementById('assetPrice').textContent = `$${price.toFixed(2)}`;
+            document.getElementById('assetPrice').style.color = change >= 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('assetChange').textContent = `${change>=0?'+':''}${change.toFixed(1)}%`;
+            document.getElementById('holdingInfo').textContent = `У вас: ${qty.toFixed(4)}`;
+
+            document.getElementById('mainBalanceAmount').textContent = G.balance.toFixed(2);
+
+            let total = G.balance;
+            Object.keys(G.holdings).forEach(s => {
+                const h = G.holdings[s], a = getAsset(s);
+                if (a) total += h.quantity * a.priceHistory[a.priceHistory.length-1];
+            });
+            document.getElementById('portfolioValue').textContent = `$${total.toFixed(2)}`;
+            const pnl = total - STARTING_CAPITAL;
+            document.getElementById('totalPnl').textContent = `${pnl>=0?'+':''}$${pnl.toFixed(2)}`;
+            document.getElementById('totalPnl').className = `stat-value ${pnl>=0?'positive':'negative'}`;
+            document.getElementById('totalHashrate').textContent = `${getTotalHashrate()} H/s`;
+            document.getElementById('companiesOwned').textContent = G.ownedCompanies.length;
+            
+            document.getElementById('cpuCount').textContent = Object.values(G.hardware.cpu).reduce((a,b) => a + b, 0) || 0;
+            document.getElementById('gpuCount').textContent = Object.values(G.hardware.gpu).reduce((a,b) => a + b, 0) || 0;
+            document.getElementById('ramCount').textContent = Object.values(G.hardware.ram).reduce((a,b) => a + b, 0) || 0;
+
+            const btn = document.getElementById('btnBuyCompany');
+            if (btn) {
+                const can = holding && holding.quantity >= COMPANY_COST && !G.ownedCompanies.includes(asset.symbol);
+                btn.disabled = !can;
+                btn.textContent = can ? `🏢 Купити (${holding.quantity.toFixed(0)}/100)` : 
+                    G.ownedCompanies.includes(asset.symbol) ? '🏢 Володієте' : `🏢 ${qty.toFixed(0)}/100`;
+            }
+            updateMiningUI();
+        }
+
+        function updateHoldings() {
+            const list = document.getElementById('holdingsList');
+            const keys = Object.keys(G.holdings);
+            if (!keys.length) { list.innerHTML = '<div style="font-size:0.4rem;color:var(--text-muted);text-align:center;">Порожньо</div>'; return; }
+            list.innerHTML = keys.map(s => {
+                const h = G.holdings[s], a = getAsset(s);
+                if (!a) return '';
+                const price = a.priceHistory[a.priceHistory.length-1];
+                return `<div class="holding-item"><span class="holding-symbol">${s}</span><span class="holding-amount">${h.quantity.toFixed(4)}</span><span class="holding-value">$${(h.quantity*price).toFixed(2)}</span></div>`;
+            }).join('');
+        }
+
+        function quickBuy(amount) {
+            const asset = getAsset(G.selectedAsset);
+            if (!asset) return;
+            const price = asset.priceHistory[asset.priceHistory.length-1];
+            const fee = amount * COMMISSION, qty = (amount - fee) / price;
+            if (amount > G.balance) { toast(`❌ Недостатньо! $${G.balance.toFixed(2)}`); return; }
+            G.balance -= amount;
+            const existing = G.holdings[asset.symbol];
+            if (existing) {
+                const total = existing.quantity + qty;
+                existing.avgPrice = (existing.avgPrice * existing.quantity + price * qty) / total;
+                existing.quantity = total;
+            } else {
+                G.holdings[asset.symbol] = { quantity: qty, avgPrice: price };
+            }
+            updateAllUI(); saveGame();
+        }
+
+        function quickSell(pct) {
+            const asset = getAsset(G.selectedAsset);
+            const holding = G.holdings[asset.symbol];
+            if (!holding || holding.quantity <= 0) { toast('Немає активу'); return; }
+            const sellQty = holding.quantity * (pct/100);
+            const price = asset.priceHistory[asset.priceHistory.length-1];
+            G.balance += sellQty * price * (1 - COMMISSION);
+            holding.quantity -= sellQty;
+            if (holding.quantity <= 0.00000001) delete G.holdings[asset.symbol];
+            updateAllUI(); saveGame();
+        }
+
+        function buyAsset() {
+            const asset = getAsset(G.selectedAsset);
+            const qty = parseFloat(document.getElementById('tradeQuantity').value);
+            if (!asset || !qty || qty <= 0) return;
+            const price = asset.priceHistory[asset.priceHistory.length-1];
+            const total = qty * price * (1 + COMMISSION);
+            if (total > G.balance) { toast(`❌ Потрібно $${total.toFixed(2)}`); return; }
+            G.balance -= total;
+            const existing = G.holdings[asset.symbol];
+            if (existing) {
+                const totalQ = existing.quantity + qty;
+                existing.avgPrice = (existing.avgPrice * existing.quantity + price * qty) / totalQ;
+                existing.quantity = totalQ;
+            } else {
+                G.holdings[asset.symbol] = { quantity: qty, avgPrice: price };
+            }
+            updateAllUI(); saveGame();
+        }
+
+        function sellAsset() {
+            const asset = getAsset(G.selectedAsset);
+            const holding = G.holdings[asset.symbol];
+            const qty = parseFloat(document.getElementById('tradeQuantity').value);
+            if (!holding || holding.quantity <= 0) { toast('Немає активу'); return; }
+            if (!qty || qty <= 0 || qty > holding.quantity) { toast(`У вас ${holding.quantity.toFixed(8)}`); return; }
+            const price = asset.priceHistory[asset.priceHistory.length-1];
+            G.balance += qty * price * (1 - COMMISSION);
+            holding.quantity -= qty;
+            if (holding.quantity <= 0.00000001) delete G.holdings[asset.symbol];
+            updateAllUI(); saveGame();
+        }
+
+        function buyCompany() {
+            const asset = getAsset(G.selectedAsset);
+            const holding = G.holdings[asset.symbol];
+            if (!holding || holding.quantity < COMPANY_COST) { toast(`Потрібно ${COMPANY_COST} акцій`); return; }
+            if (G.ownedCompanies.includes(asset.symbol)) { toast('Вже володієте'); return; }
+            holding.quantity -= COMPANY_COST;
+            G.ownedCompanies.push(asset.symbol);
+            if (holding.quantity <= 0) delete G.holdings[asset.symbol];
+            toast(`🏢 Компанію ${asset.name} придбано!`);
+            updateAllUI(); saveGame();
+        }
+
+        // ============================================================
+        //  📈 СИМУЛЯЦІЯ
+        // ============================================================
+        function simulateTick() {
+            assets.forEach(a => {
+                const t = trends[a.symbol] || 0;
+                const n = (Math.random()-0.5)*0.003;
+                const last = a.priceHistory[a.priceHistory.length-1];
+                a.priceHistory.push(last * (1 + t + n));
+                if (a.priceHistory.length > 100) a.priceHistory.shift();
+            });
+            if (G.selectedAsset) updateChart(G.selectedAsset);
+            updatePrices();
+        }
+
+        // ============================================================
+        //  📊 ЧАРТ
+        // ============================================================
+        let chart = null;
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Ціна', data: [], borderColor: '#448aff', backgroundColor: 'rgba(68,138,255,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    scales: { x: { grid: { color: '#1a1a22' }, ticks: { color: '#555568', maxTicksLimit: 6 } },
+                             y: { grid: { color: '#1a1a22' }, ticks: { color: '#555568', maxTicksLimit: 5 } } },
+                    animation: { duration: 200 } }
+            });
+        }
+        function updateChart(symbol) {
+            const asset = getAsset(symbol);
+            if (!asset || !chart) return;
+            const h = asset.priceHistory;
+            const labels = h.map((_,i) => new Date(Date.now() - (h.length-1-i)*TICK_MS).toLocaleTimeString('uk-UA', {hour12:false, hour:'2-digit', minute:'2-digit'}));
+            const trend = trends[symbol] || 0;
+            const color = trend >= 0 ? '#00c853' : '#ff1744';
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = h;
+            chart.data.datasets[0].borderColor = color;
+            chart.data.datasets[0].backgroundColor = color === '#00c853' ? 'rgba(0,200,83,0.15)' : 'rgba(255,23,68,0.15)';
+            chart.update('none');
+        }
+
+        // ============================================================
+        //  🖥️ UI
+        // ============================================================
+        function updateAllUI() {
+            updateAssetList(); updatePrices(); updateHoldings();
+            if (G.selectedAsset) updateChart(G.selectedAsset);
+            updateMiningCoinSelector(); updatePCConfig(); updateMiningHardwareList();
+            document.querySelectorAll('.chart-tab').forEach(t => t.classList.toggle('active', t.textContent === G.selectedAsset));
+            document.getElementById('userName').textContent = G.name;
+            updateMineButton();
+        }
+
+        // ============================================================
+        //  💾 ЗБЕРЕЖЕННЯ
+        // ============================================================
+        function saveGame() {
+            if (!G.uid) { try { localStorage.setItem('nexus_guest_save', JSON.stringify(G)); } catch(e) {} return; }
+            G.lastSave = Date.now();
+            const data = { ...G, lastUpdate: Date.now() };
+            db.ref('users/' + G.uid + '/nexus').set(data).catch(e => console.warn('Save error:', e));
+        }
+        function loadGame(data) {
+            if (!data) return;
+            Object.keys(data).forEach(key => {
+                if (key !== 'uid' && key !== 'lastSave') G[key] = data[key];
+            });
+            updateAllUI();
+        }
+
+        // ============================================================
+        //  🔐 АВТОРИЗАЦІЯ (скорочена)
+        // ============================================================
+        function switchAuthTab(mode) {
+            authMode = mode;
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            if (mode === 'login') {
+                document.querySelector('.auth-tab:first-child').classList.add('active');
+                document.getElementById('authMainBtn').textContent = '🔐 Увійти';
+                document.getElementById('authMainBtn').onclick = handleLogin;
+                document.getElementById('authStatus').textContent = '🔐 Введіть дані для входу';
+            } else {
+                document.querySelector('.auth-tab:last-child').classList.add('active');
+                document.getElementById('authMainBtn').textContent = '📝 Зареєструватися';
+                document.getElementById('authMainBtn').onclick = handleRegister;
+                document.getElementById('authStatus').textContent = '📝 Створіть новий акаунт';
+            }
+        }
+
+        function handleRegister() {
+            if (!auth) { document.getElementById('authError').textContent = '❌ Firebase не готовий.'; return; }
+            const nick = document.getElementById('authNick').value.trim(), pass = document.getElementById('authPass').value;
+            const error = document.getElementById('authError'), success = document.getElementById('authSuccess');
+            if (!nick || !pass) { error.textContent = '❌ Введіть нік та пароль'; return; }
+            if (nick.length < 3) { error.textContent = '❌ Нік ≥3'; return; }
+            if (pass.length < 6) { error.textContent = '❌ Пароль ≥6'; return; }
+            error.textContent = ''; success.textContent = '⏳ Реєстрація...';
+            const email = nick.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nexus.ua';
+            auth.createUserWithEmailAndPassword(email, pass).then(uc => {
+                const uid = uc.user.uid; G.uid = uid; G.isTelegramUser = false; G.isGuest = false; G.name = nick;
+                G.balance = STARTING_CAPITAL; saveGame();
+                success.textContent = '✅ Реєстрація виконана!'; error.textContent = ''; startGame();
+            }).catch(e => {
+                console.error('Register error:', e);
+                if (e.code === 'auth/email-already-in-use') error.textContent = '❌ Користувач вже існує';
+                else error.textContent = '❌ ' + e.message;
+                success.textContent = '';
+            });
+        }
+
+        function handleLogin() {
+            if (!auth) { document.getElementById('authError').textContent = '❌ Firebase не готовий.'; return; }
+            const nick = document.getElementById('authNick').value.trim(), pass = document.getElementById('authPass').value;
+            const error = document.getElementById('authError'), success = document.getElementById('authSuccess');
+            if (!nick || !pass) { error.textContent = '❌ Введіть нік та пароль'; return; }
+            if (nick.length < 3) { error.textContent = '❌ Нік ≥3'; return; }
+            if (pass.length < 6) { error.textContent = '❌ Пароль ≥6'; return; }
+            error.textContent = ''; success.textContent = '⏳ Вхід...';
+            const email = nick.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nexus.ua';
+            auth.signInWithEmailAndPassword(email, pass).then(uc => {
+                G.uid = uc.user.uid; G.isTelegramUser = false; G.isGuest = false; G.name = nick;
+                db.ref('users/' + G.uid + '/nexus').once('value').then(s => {
+                    if (s.val()) loadGame(s.val()); else saveGame();
+                    success.textContent = '✅ Вхід виконано!'; error.textContent = ''; startGame();
+                });
+            }).catch(e => {
+                console.error('Login error:', e);
+                if (e.code === 'auth/user-not-found') error.textContent = '❌ Користувача не знайдено';
+                else if (e.code === 'auth/wrong-password') error.textContent = '❌ Невірний пароль';
+                else error.textContent = '❌ ' + e.message;
+                success.textContent = '';
+            });
+        }
+
+        function handleTelegramLogin() {
+            if (!auth) { document.getElementById('authError').textContent = '❌ Firebase не готовий.'; return; }
+            if (tg && tg.initDataUnsafe?.user) {
+                const u = tg.initDataUnsafe.user, uid = 'tg_' + u.id;
+                G.uid = uid; G.isTelegramUser = true; G.isGuest = false;
+                G.name = u.first_name || 'TelegramUser';
+                if (u.last_name) G.name += ' ' + u.last_name;
+                G.balance = STARTING_CAPITAL;
+                db.ref('users/' + uid + '/nexus').once('value').then(s => {
+                    if (s.val()) { const d = s.val(); d.isTelegramUser = true; loadGame(d); } else saveGame();
+                    document.getElementById('authSuccess').textContent = '✅ Вхід через Telegram!';
+                    document.getElementById('authError').textContent = ''; startGame();
+                }).catch(() => { saveGame(); startGame(); });
+                return;
+            }
+            const uid = 'tg_' + Date.now();
+            G.uid = uid; G.isTelegramUser = true; G.isGuest = false; G.name = '📱 TelegramUser';
+            G.balance = STARTING_CAPITAL; saveGame();
+            document.getElementById('authSuccess').textContent = '✅ Вхід через Telegram!';
+            document.getElementById('authError').textContent = ''; startGame();
+        }
+
+        function handleGuest() {
+            if (!auth) { document.getElementById('authError').textContent = '❌ Firebase не готовий.'; return; }
+            const error = document.getElementById('authError'), success = document.getElementById('authSuccess');
+            error.textContent = ''; success.textContent = '⏳ Вхід як гість...';
+            auth.signInAnonymously().then(uc => {
+                const uid = uc.user.uid; G.uid = uid; G.isTelegramUser = false; G.isGuest = true; G.name = 'Гість';
+                G.balance = STARTING_CAPITAL;
+                db.ref('users/' + uid + '/nexus').once('value').then(s => {
+                    if (s.val()) { const d = s.val(); d.isGuest = true; loadGame(d); } else saveGame();
+                    success.textContent = '✅ Гостьовий вхід!'; error.textContent = ''; startGame();
+                });
+            }).catch(e => { console.error('Guest error:', e); error.textContent = '❌ ' + e.message; success.textContent = ''; });
+        }
+
+        async function convertGuestToAccount() {
+            if (!G.isGuest) { toast('Ви вже маєте акаунт'); return; }
+            if (!auth) { toast('Firebase не готовий'); return; }
+            const error = document.getElementById('authError'), success = document.getElementById('authSuccess');
+            const nick = prompt('Введіть нікнейм (мін. 3):');
+            if (!nick || nick.length < 3) { toast('Нік ≥3'); return; }
+            const pass = prompt('Введіть пароль (мін. 6):');
+            if (!pass || pass.length < 6) { toast('Пароль ≥6'); return; }
+            try {
+                const guestData = { ...G }, guestUid = G.uid;
+                const email = nick.toLowerCase().replace(/[^a-z0-9]/g,'') + '@nexus.ua';
+                const uc = await auth.createUserWithEmailAndPassword(email, pass);
+                const newUid = uc.user.uid;
+                G.uid = newUid; G.isGuest = false; G.name = nick; G.isTelegramUser = false;
+                await db.ref('users/' + newUid + '/nexus').set({ ...guestData, uid: newUid, name: nick, isGuest: false, isTelegramUser: false, lastUpdate: Date.now() });
+                if (guestUid) { try { await db.ref('users/' + guestUid + '/nexus').remove(); } catch(e) {} }
+                loadGame({ ...guestData, uid: newUid, name: nick, isGuest: false });
+                saveGame();
+                toast('✅ Акаунт створено! Прогрес збережено.');
+                if (success) success.textContent = '✅ Акаунт створено!';
+                if (error) error.textContent = '';
+                updateAllUI();
+            } catch(e) {
+                console.error('Conversion error:', e);
+                if (e.code === 'auth/email-already-in-use') toast('❌ Користувач вже існує');
+                else toast('❌ ' + e.message);
+                if (error) error.textContent = '❌ ' + e.message;
+            }
+        }
+
+        function logout() {
+            if (G.isGuest) {
+                if (confirm('Прогрес буде втрачено. Продовжити?')) { localStorage.removeItem('nexus_guest_save'); location.reload(); }
+                return;
+            }
+            if (confirm('Вийти?')) { auth.signOut().then(() => location.reload()).catch(() => location.reload()); }
+        }
+
+        // ============================================================
+        //  🚀 СТАРТ
+        // ============================================================
+        function startGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('game').style.display = 'flex';
+            document.getElementById('tradingPanel').classList.add('active');
+            document.getElementById('miningPanel').classList.remove('active');
+            initAssets(); initChart(); updateAllUI();
+            setInterval(simulateTick, TICK_MS);
+            setInterval(processMining, MINING_INTERVAL);
+            document.getElementById('tradeQuantity').addEventListener('input', updatePrices);
+            toast('💎 Ласкаво просимо до Nexus Core!');
+            saveGame();
+        }
+
+        document.getElementById('authStatus').textContent = '🔐 Виберіть спосіб входу';
+        if (!authListenerSet) {
+            authListenerSet = true;
+            auth?.onAuthStateChanged(user => {
+                if (user && !gameStarted) {
+                    G.uid = user.uid; G.isTelegramUser = false; G.isGuest = user.isAnonymous || false;
+                    db.ref('users/' + user.uid + '/nexus').once('value').then(s => {
+                        if (s.val()) { const d = s.val(); d.isGuest = G.isGuest; loadGame(d); }
+                        else { G.name = user.isAnonymous ? 'Гість' : 'Гравець'; G.balance = STARTING_CAPITAL; saveGame(); }
+                        startGame();
+                    }).catch(() => startGame());
+                } else if (!user && !gameStarted) {
+                    document.getElementById('authScreen').style.display = 'flex';
+                    document.getElementById('game').style.display = 'none';
+                }
+            });
+        }
+
+        console.log('💎 Nexus Core — ПОКУПКА З КІЛЬКІСТЮ!');
+        console.log('✅ Можна купувати будь-яку кількість однакових комплектуючих');
+        console.log('💰 Введіть кількість і натисніть Купити');
+        console.log('✅ 30 CPU + 60 GPU + 60 RAM');
+    </script>
+</body>
+  </html>
